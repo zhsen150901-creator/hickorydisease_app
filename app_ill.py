@@ -35,7 +35,7 @@ x_zero_scaled = scaler.transform(x_zero)
 x_zero_poly = poly.transform(x_zero_scaled)
 z_zero = ridge.predict(x_zero_poly)
 # 希望“全零输入”时的风险为 0~5%，对应 logit(0.05/50)=logit(0.001)=≈ -6.9
-target_logit = -6.9
+target_logit = -4.0   # 对应风险 ≈ 1.8%
 baseline_shift = float(z_zero - target_logit)
 print(f"⚙️ 自动基线修正：偏移量 {baseline_shift:.3f}")
 
@@ -166,4 +166,5 @@ if st.button("开始预测"):
     )
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
