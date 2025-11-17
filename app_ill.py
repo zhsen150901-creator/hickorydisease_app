@@ -102,9 +102,9 @@ if st.button("开始预测"):
     # 风险分级
     if pred > 30:
         color, label, text_color = "#FF4C4C", "发病风险：极高", "white"
-    elif pred > 20:
+    elif pred > 25:
         color, label, text_color = "#FFD93D", "发病风险：较高", "black"
-    elif pred > 5:
+    elif pred > 15:
         color, label, text_color = "#4DA6FF", "发病风险：中等", "white"
     else:
         color, label, text_color = "#4CD964", "发病风险：较低", "black"
@@ -148,4 +148,5 @@ if st.button("开始预测"):
     )
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
