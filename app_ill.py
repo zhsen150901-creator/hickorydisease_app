@@ -9,15 +9,18 @@ st.set_page_config(
     layout="centered",
 )
 
-# ========== 加载模型 ==========
+# ========== 加载模型（适配“二次多项式 + 岭回归”） ==========
 BASE_DIR = Path(__file__).parent
 MODEL_PATH = BASE_DIR / "disease_model_poly.pkl"
 model = load(MODEL_PATH)
 
-coef = model["coef"]          # 线性模型系数（含偏置）
-scaler = model["scaler"]      # 标准化器
-feature_names = model["feature_names"]
-SPORE_FACTOR = model["spore_factor"]
+# 训练脚本已把截距和多项式系数合并：coef = [intercept, beta_1, ...]
+coef_full = model["coef"]
+scaler = model["scaler"]          # 作用在 4 个原始特征（高温、5月孢子、7月孢子、经营编码）
+poly = model.get("poly", None)    # PolynomialFeatures（必须存在，除非你保存的是旧线性模型）
+y_scale = model.get("y_scale", 50.0)  # 训练时用的上限（通常为 50）
+# 说明：前端输入的就是孢子数（不是格数），所以这里不需要 spore_factor
+# SPORE_FACTOR = model.get("spore_factor", 7638)
 
 # ========== 页面标题 ==========
 st.markdown(
@@ -62,24 +65,44 @@ level = st.selectbox("经营水平", ["良好", "中等", "一般"])
 encode_map = {"良好": 0, "中等": 1, "一般": 2}
 level_code = encode_map[level]
 
-# ========== 预测函数（使用原始模型，保持连续输出） ==========
-def predict_from_inputs(heat_hours, may_peak_spores, july_peak_spores, level_code):
-    x_raw = np.array([[heat_hours, may_peak_spores, july_peak_spores, level_code]])
-    z = scaler.transform(x_raw)                 # 标准化
-    z_design = np.c_[np.ones(len(z)), z]        # 加偏置列
-    pred = float(z_design @ coef)               # 原始预测
-    return max(0.0, min(pred, 100.0))           # 裁剪到 0~100%
+# ========== 预测函数（多项式 → 岭回归；输出连续 0~y_scale） ==========
+def predict_from_inputs(heat_hours, may_spores, july_spores, level_code):
+    """
+    heat_hours: 三个月内 >28℃ 的总小时数
+    may_spores: 5 月周孢子峰值（孢子数）
+    july_spores: 7 月周孢子峰值（孢子数）
+    level_code: 经营编码（良好=0 / 中等=1 / 一般=2）
+    """
+    # 1) 原始 4 维特征
+    x_base = np.array([[heat_hours, may_spores, july_spores, level_code]], dtype=float)
+
+    # 2) 标准化（与训练保持一致）
+    xz = scaler.transform(x_base)
+
+    # 3) 多项式展开（degree=2，含交互）
+    if poly is not None:
+        x_feat = poly.transform(xz)
+    else:
+        # 兼容极少数旧模型（没有 poly），直接用标准化后的线性特征
+        x_feat = xz
+
+    # 4) 线性点乘（[1, x_feat] @ coef_full），再缩放回 0~y_scale（通常 y_scale=50）
+    y_scaled = float(np.c_[np.ones((1, 1)), x_feat] @ coef_full)   # 期望在 0~1
+    y_pred = float(np.clip(y_scaled, 0.0, 1.0) * y_scale)          # 连续 0~y_scale
+
+    return y_pred
 
 # ========== 预测按钮 ==========
 if st.button("开始预测"):
     pred = predict_from_inputs(
         heat_hours=hours,
-        may_peak_spores=may_peak_spores,
-        july_peak_spores=july_peak_spores,
+        may_spores=may_peak_spores,     # 注意：这里前端输入的是“孢子数”，无需再 × 7638
+        july_spores=july_peak_spores,
         level_code=level_code,
     )
 
     # —— 连续预测 + 四档可视化分级（不做硬规则）——
+    #   以下阈值仍按 10/20/30（单位：%）；若你的 y_scale 是 50，则含义为 0~50% 区间内的分档
     if pred > 30:
         color, label, text_color = "#FF4C4C", "发病风险：极高", "white"
     elif pred > 20:
@@ -104,7 +127,8 @@ if st.button("开始预测"):
         ">
             {label}
         </div>
-        """, unsafe_allow_html=True,
+        """,
+        unsafe_allow_html=True,
     )
 
     # 指标说明
@@ -122,7 +146,7 @@ if st.button("开始预测"):
         - 🔴 **红色**：发病风险极高  
         - 🟡 **黄色**：发病风险较高  
         - 🔵 **蓝色**：发病风险中等  
-        - 🟢 **绿色**：发病风险较低 
+        - 🟢 **绿色**：发病风险较低
         """
     )
 
