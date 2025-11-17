@@ -5,24 +5,28 @@ from pathlib import Path
 
 # ========== 基本设置 ==========
 st.set_page_config(
-    page_title="山核桃黑籽病发病率预测系统",
+    page_title="山核桃黑籽病预警系统",
     layout="centered",
 )
 
 # ========== 加载模型 ==========
-BASE_DIR = Path(__file__).parent  # app_ill.py 所在目录
+BASE_DIR = Path(__file__).parent  # app 所在目录
 MODEL_PATH = BASE_DIR / "disease_model_poly.pkl"
 model = load(MODEL_PATH)
+
 coef = model["coef"]
 scaler = model["scaler"]
 feature_names = model["feature_names"]
-SPORE_FACTOR = model["spore_factor"]   # 虽然加载了，但前端已经不用它了
+SPORE_FACTOR = model["spore_factor"]
+
+# 桃花溪最低发病率（6.84%）作为极低风险基准线
+BASELINE_RATE = 6.84
 
 # ========== 页面标题 ==========
 st.markdown(
     """
-    <h2 style="text-align:center; margin-bottom:0.2rem;">山核桃黑籽病发病率预测系统</h2>
-    <p style="text-align:center; color: #555;">
+    <h2 style="text-align:center; margin-bottom:0.2rem;">山核桃黑籽病预警系统</h2>
+    <p style="text-align:center; color: #bbb;">
         输入 5 月 15 日至 8 月 15 日高温时长、5/7 月周孢子峰值及经营水平，系统将评估黑籽病风险等级
     </p>
     <hr style="margin-top:0.5rem; margin-bottom:1rem;">
@@ -75,6 +79,7 @@ level = st.selectbox(
     "经营水平",
     ["良好", "中等", "一般"],
 )
+
 encode_map = {"良好": 0, "中等": 1, "一般": 2}
 level_code = encode_map[level]
 
@@ -91,13 +96,13 @@ def predict_from_inputs(heat_hours,
                        july_peak_spores,
                        level_code]])
 
-    z = scaler.transform(x_raw)           # (1, 4)
-    z_design = np.c_[np.ones(len(z)), z]  # 偏置 + 特征
+    z = scaler.transform(x_raw)
+    z_design = np.c_[np.ones(len(z)), z]  # 加偏置项
 
     pred = float(z_design @ coef)
     return max(0.0, min(pred, 100.0))
 
-# ========== 按钮与结果输出 ==========
+# ========== 预测与输出 ==========
 if st.button("开始预测"):
 
     pred = predict_from_inputs(
@@ -107,7 +112,7 @@ if st.button("开始预测"):
         level_code=level_code,
     )
 
-    # 风险等级颜色
+    # ========== 风险等级梯度 ==========
     if pred > 30:
         color = "#FF4C4C"
         label = "发病风险：极高"
@@ -123,12 +128,17 @@ if st.button("开始预测"):
         label = "发病风险：中等"
         text_color = "white"
 
-    else:
+    elif pred >= BASELINE_RATE:
         color = "#4CD964"
         label = "发病风险：较低"
         text_color = "black"
 
-    # ======== 风险等级卡片 ========
+    else:
+        color = "#4CD964"
+        label = "发病风险：极低"
+        text_color = "black"
+
+    # ========== 风险卡片 ==========
     st.markdown(
         f"""
         <div style="
@@ -147,7 +157,7 @@ if st.button("开始预测"):
         unsafe_allow_html=True,
     )
 
-    # ======== 指标说明 + 颜色说明 ========
+    # ========== 指标说明 ==========
     st.markdown("### 指标说明")
     st.write(
         f"- 高温时长：**{hours:.1f} 小时**\n"
@@ -156,18 +166,16 @@ if st.button("开始预测"):
         f"- 经营水平：**{level}**"
     )
 
-    # 这里就是你要的颜色对应关系说明
+    # ========== 风险等级颜色说明 ==========
     st.markdown(
-        """
+        f"""
         **颜色与发病严重程度对应关系：**  
         - 🔴 **红色**：发病极高  
         - 🟡 **黄色**：发病较高  
         - 🔵 **蓝色**：发病中等  
-        - 🟢 **绿色**：发病较低  
+        - 🟢 **绿色**：发病较低
         """
     )
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
-
-
