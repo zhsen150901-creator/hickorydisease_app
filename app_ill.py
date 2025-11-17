@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 # ========== 加载模型 ==========
-BASE_DIR = Path(__file__).parent  # app 所在目录
+BASE_DIR = Path(__file__).parent
 MODEL_PATH = BASE_DIR / "disease_model_poly.pkl"
 model = load(MODEL_PATH)
 
@@ -19,7 +19,7 @@ scaler = model["scaler"]
 feature_names = model["feature_names"]
 SPORE_FACTOR = model["spore_factor"]
 
-# 桃花溪最低发病率（6.84%）作为极低风险基准线
+# 桃花溪最低发病率（6.84%）作为较低风险分界参考
 BASELINE_RATE = 6.84
 
 # ========== 页面标题 ==========
@@ -44,6 +44,7 @@ hours = st.number_input(
     value=300.0,
     step=10.0,
 )
+
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -79,11 +80,9 @@ level = st.selectbox(
     "经营水平",
     ["良好", "中等", "一般"],
 )
-
 encode_map = {"良好": 0, "中等": 1, "一般": 2}
 level_code = encode_map[level]
 
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ========== 预测函数 ==========
 def predict_from_inputs(heat_hours,
@@ -97,12 +96,13 @@ def predict_from_inputs(heat_hours,
                        level_code]])
 
     z = scaler.transform(x_raw)
-    z_design = np.c_[np.ones(len(z)), z]  # 加偏置项
+    z_design = np.c_[np.ones(len(z)), z]
 
     pred = float(z_design @ coef)
     return max(0.0, min(pred, 100.0))
 
-# ========== 预测与输出 ==========
+
+# ========== 预测触发 ==========
 if st.button("开始预测"):
 
     pred = predict_from_inputs(
@@ -112,7 +112,20 @@ if st.button("开始预测"):
         level_code=level_code,
     )
 
-    # ========== 风险等级梯度 ==========
+    # ================================
+    #     强制规则：极低风险触发条件
+    # ================================
+    if (
+        hours < 10
+        and may_peak_spores < 1000
+        and july_peak_spores < 1000
+        and level_code == 0   # 经营良好
+    ):
+        pred = 0.0  # 强制设置为极低风险值
+
+    # =====================================
+    #  根据预测值划分风险等级（颜色 + 文案）
+    # =====================================
     if pred > 30:
         color = "#FF4C4C"
         label = "发病风险：极高"
@@ -138,7 +151,8 @@ if st.button("开始预测"):
         label = "发病风险：极低"
         text_color = "black"
 
-    # ========== 风险卡片 ==========
+
+    # ========== 风险显示卡片 ==========
     st.markdown(
         f"""
         <div style="
@@ -166,14 +180,14 @@ if st.button("开始预测"):
         f"- 经营水平：**{level}**"
     )
 
-    # ========== 风险等级颜色说明 ==========
+    # ========== 风险颜色解释 ==========
     st.markdown(
         f"""
         **颜色与发病严重程度对应关系：**  
         - 🔴 **红色**：发病极高  
         - 🟡 **黄色**：发病较高  
-        - 🔵 **蓝色**：发病中等  
-        - 🟢 **绿色**：发病较低
+        - 🔵 **蓝色**：发病中等
+        - 🟢 **绿色**：发病较低 
         """
     )
 
