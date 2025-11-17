@@ -1,4 +1,4 @@
-# app_ill.py（支持“上限触发”逻辑）
+# app_ill.py — 含零输入 & 上限逻辑
 import numpy as np
 import streamlit as st
 from joblib import load
@@ -22,8 +22,8 @@ SPORE_FACTOR = model["spore_factor"]
 Y_MAX = model["y_max"]
 
 # ---------- 模型边界 ----------
-TEMP_MAX = 1900.0  # 与训练数据上限一致
-SPORE_MAX = (df_max := 60 + 9 + 16 + 45 + 5 + 30) * SPORE_FACTOR  # 训练集中最高孢子总数近似值
+TEMP_MAX = 1900.0
+SPORE_MAX = (60 + 9 + 16 + 45 + 5 + 30) * SPORE_FACTOR  # 训练集最大孢子估算
 
 # ---------- 页面标题 ----------
 st.markdown("""
@@ -34,7 +34,7 @@ st.markdown("""
 <hr>
 """, unsafe_allow_html=True)
 
-# ---------- 输入区 ----------
+# ---------- 输入 ----------
 st.subheader("一、环境条件（温度）")
 hours = st.number_input("5 月 15 日至 8 月 15 日期间 >28℃ 的累计小时数", 0.0, 2160.0, 200.0, 10.0)
 
@@ -49,26 +49,42 @@ st.subheader("三、经营条件")
 level = st.selectbox("经营水平", ["良好", "中等", "一般"])
 level_code = {"良好": 0, "中等": 1, "一般": 2}[level]
 
-# ---------- 预测逻辑 ----------
+# ---------- 预测函数 ----------
 def predict(heat_hours, may_spores, july_spores, level_code):
     spore_sum = may_spores + july_spores
-    # ==== 上限逻辑 ====
-    if heat_hours >= TEMP_MAX or spore_sum >= SPORE_MAX:
-        return Y_MAX, True  # 直接返回最高发病率
 
-    # ==== 常规预测 ====
+    # === 全为零输入 ===
+    if heat_hours == 0 and may_spores == 0 and july_spores == 0:
+        return 0.0, "zero"
+
+    # === 上限触发 ===
+    if heat_hours >= TEMP_MAX or spore_sum >= SPORE_MAX:
+        return Y_MAX, "max"
+
+    # === 正常预测 ===
     x_raw = np.array([[heat_hours, may_spores, july_spores, level_code]])
     xs = scaler.transform(x_raw)
     xp = poly.transform(xs)
     z = ridge.predict(xp)
     y_pred = Y_MAX * inv_logit(z)
-    return float(np.clip(y_pred, 0.0, Y_MAX)), False
+    y_pred = float(np.clip(y_pred, 0.0, Y_MAX))
 
-# ---------- 按钮 ----------
+    # === 按经营调整 ===
+    if level_code == 0:
+        y_pred *= 0.9
+    elif level_code == 2:
+        y_pred *= 1.1
+
+    return float(np.clip(y_pred, 0.0, Y_MAX)), "normal"
+
+# ---------- 预测按钮 ----------
 if st.button("开始预测"):
-    pred, upper = predict(hours, may_peak_spores, july_peak_spores, level_code)
+    pred, status = predict(hours, may_peak_spores, july_peak_spores, level_code)
 
-    if upper:
+    # ===== 风险分类 =====
+    if status == "zero":
+        color, label, text_color = "#4CD964", "发病风险：极低", "black"
+    elif status == "max":
         color, label, text_color = "#FF4C4C", "发病风险：极高", "white"
     elif pred > 30:
         color, label, text_color = "#FF4C4C", "发病风险：极高", "white"
@@ -79,33 +95,32 @@ if st.button("开始预测"):
     else:
         color, label, text_color = "#4CD964", "发病风险：较低", "black"
 
-    st.markdown(
-        f"""
+    st.markdown(f"""
         <div style="
             padding:30px;border-radius:14px;
-            background:{color};text-align:center;
+            background:{color};
+            text-align:center;
             font-size:26px;font-weight:700;
             color:{text_color};
             box-shadow:0 4px 10px rgba(0,0,0,0.15);
         ">{label}</div>
-        """, unsafe_allow_html=True
-    )
+    """, unsafe_allow_html=True)
 
+    # === 指标说明 ===
     st.markdown("### 指标说明")
     st.write(
         f"- 高温时长：**{hours:.1f} 小时**\n"
-        f"- 5 月孢子峰值：**{may_peak_spores:.0f} 孢子**\n"
-        f"- 7 月孢子峰值：**{july_peak_spores:.0f} 孢子**\n"
+        f"- 5 月周孢子峰值：**{may_peak_spores:.0f} 孢子**\n"
+        f"- 7 月周孢子峰值：**{july_peak_spores:.0f} 孢子**\n"
         f"- 经营水平：**{level}**"
     )
-
     st.markdown("""
     **颜色与发病严重程度对应：**  
     - 🔴 **红色**：发病风险极高  
     - 🟡 **黄色**：较高  
     - 🔵 **蓝色**：中等  
     - 🟢 **绿色**：较低  
+    - ⚪ **白色/绿底**：极低  
     """)
 else:
     st.info("请填写参数并点击“开始预测”")
-
