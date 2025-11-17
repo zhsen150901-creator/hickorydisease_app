@@ -9,11 +9,11 @@ st.set_page_config(
 )
 
 # ========== 加载模型 ==========
-model = load("disease_model_poly.pkl")
+model = load(r"C:\Users\zhbshen\PycharmProjects\PythonProject\disease_model_poly.pkl")
 coef = model["coef"]
 scaler = model["scaler"]
 feature_names = model["feature_names"]
-SPORE_FACTOR = model["spore_factor"]
+SPORE_FACTOR = model["spore_factor"]   # 这里目前加载但在前端不用也没关系
 
 # ========== 页面标题 ==========
 st.markdown(
@@ -43,7 +43,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ========== 2. 孢子流量 ==========
 st.subheader("二、孢子流量（周峰值，单位：孢子数）")
 
-st.markdown("**1）5 月孢子周峰值**")
+st.markdown("**1）5 月孢子峰值周**")
 c1, c2, c3 = st.columns(3)
 with c1:
     sp1_may = st.number_input("小孢拟盘（5 月）", min_value=0, max_value=500000, value=10000, step=100)
@@ -54,7 +54,7 @@ with c3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-st.markdown("**2）7 月孢子周峰值**")
+st.markdown("**2）7 月孢子峰值周**")
 d1, d2, d3 = st.columns(3)
 with d1:
     sp1_july = st.number_input("小孢拟盘（7 月）", min_value=0, max_value=500000, value=8000, step=100)
@@ -77,20 +77,32 @@ level_code = encode_map[level]
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ========== 预测函数 ==========
+# ========== 预测函数（已改成 4 个特征） ==========
 def predict_from_inputs(heat_hours,
                         sp1_may, sp2_may, sp3_may,
                         sp1_july, sp2_july, sp3_july,
                         level_code):
+    # 1）把三种孢子合并成“5 月周峰值总孢子数”“7 月周峰值总孢子数”
+    may_total_spores = sp1_may + sp2_may + sp3_may
+    july_total_spores = sp1_july + sp2_july + sp3_july
+
+    # 如果你在训练时是“格数 × 7638 → 孢子数”，
+    # 而这里输入的是“格数”，可以改成：
+    # may_total_spores  = (sp1_may + sp2_may + sp3_may) * SPORE_FACTOR
+    # july_total_spores = (sp1_july + sp2_july + sp3_july) * SPORE_FACTOR
+
+    # 2）构造和模型一致的 4 维原始特征
     x_raw = np.array([[heat_hours,
-                       sp1_may, sp2_may, sp3_may,
-                       sp1_july, sp2_july, sp3_july,
+                       may_total_spores,
+                       july_total_spores,
                        level_code]])
 
-    z = scaler.transform(x_raw)
-    z_design = np.c_[np.ones(len(z)), z]
-    pred = float(z_design @ coef)
+    # 3）归一化 + 加偏置列
+    z = scaler.transform(x_raw)          # (1, 4)
+    z_design = np.c_[np.ones(len(z)), z] # (1, 5) 偏置 + 4 特征
 
+    # 4）线性预测 + 裁剪到 0~100
+    pred = float(z_design @ coef)
     return max(0.0, min(pred, 100.0))
 
 # ========== 按钮与结果输出 ==========
@@ -121,7 +133,6 @@ if st.button("开始预测"):
         label = "发病风险：较低"
         text_color = "black"
 
-    # ========= 风险等级卡片（已去掉预测数值）=========
     st.markdown(
         f"""
         <div style="
@@ -155,5 +166,3 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
-
-
