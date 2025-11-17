@@ -69,7 +69,7 @@ if st.button("开始预测"):
     pred, upper = predict(hours, may_peak_spores, july_peak_spores, level_code)
 
     if upper:
-        color, label, text_color = "#FF4C4C", "发病风险：极高（上限触发）", "white"
+        color, label, text_color = "#FF4C4C", "发病风险：极高", "white"
     elif pred > 30:
         color, label, text_color = "#FF4C4C", "发病风险：极高", "white"
     elif pred > 20:
@@ -108,3 +108,4 @@ if st.button("开始预测"):
     """)
 else:
     st.info("请填写参数并点击“开始预测”")
+
