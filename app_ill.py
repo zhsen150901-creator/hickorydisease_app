@@ -43,7 +43,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ========== 2. 孢子流量 ==========
 st.subheader("二、孢子流量（周峰值，单位：孢子数）")
 
-st.markdown("**1）5 月孢子峰值周**")
+st.markdown("**1）5 月孢子周峰值**")
 c1, c2, c3 = st.columns(3)
 with c1:
     sp1_may = st.number_input("小孢拟盘（5 月）", min_value=0, max_value=500000, value=10000, step=100)
@@ -54,7 +54,7 @@ with c3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-st.markdown("**2）7 月孢子峰值周**")
+st.markdown("**2）7 月孢子周峰值**")
 d1, d2, d3 = st.columns(3)
 with d1:
     sp1_july = st.number_input("小孢拟盘（7 月）", min_value=0, max_value=500000, value=8000, step=100)
@@ -155,4 +155,5 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
