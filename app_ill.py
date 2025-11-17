@@ -9,7 +9,7 @@ st.set_page_config(
 )
 
 # ========== 加载模型 ==========
-model = load(r"C:\Users\zhbshen\PycharmProjects\PythonProject\disease_model_poly.pkl")
+model = load("disease_model_poly.pkl")
 coef = model["coef"]
 scaler = model["scaler"]
 feature_names = model["feature_names"]
@@ -160,3 +160,4 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
