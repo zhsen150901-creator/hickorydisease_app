@@ -9,6 +9,7 @@ def inv_logit(z: np.ndarray) -> np.ndarray:
     """logit 的反函数，把实数映射回 (0, 1) 区间"""
     return 1.0 / (1.0 + np.exp(-z))
 
+
 # ---------- 基本设置 ----------
 st.set_page_config(
     page_title="山核桃黑籽病预警系统",
@@ -20,12 +21,24 @@ BASE_DIR = Path(__file__).parent
 MODEL_PATH = BASE_DIR / "disease_model_poly.pkl"
 model = load(MODEL_PATH)
 
-scaler = model["scaler"]            # 标准化器
-poly = model["poly"]                # 多项式特征器
-ridge = model["ridge"]              # 岭回归模型
+scaler = model["scaler"]
+poly = model["poly"]
+ridge = model["ridge"]
 feature_names = model["feature_names"]
 SPORE_FACTOR = model["spore_factor"]
-Y_MAX = model["y_max"]              # 最大发病率上限（如 50）
+Y_MAX = model["y_max"]
+
+# ---------- 自动基线校正 ----------
+# 计算当所有输入为 0 时模型预测的基线输出（即模型“默认风险”）
+x_zero = np.array([[0, 0, 0, 0]])  # 高温小时数=0, 孢子数=0, 经营良好
+x_zero_scaled = scaler.transform(x_zero)
+x_zero_poly = poly.transform(x_zero_scaled)
+z_zero = ridge.predict(x_zero_poly)
+# 希望“全零输入”时的风险为 0~5%，对应 logit(0.05/50)=logit(0.001)=≈ -6.9
+target_logit = -6.9
+baseline_shift = float(z_zero - target_logit)
+print(f"⚙️ 自动基线修正：偏移量 {baseline_shift:.3f}")
+
 
 # ---------- 页面标题 ----------
 st.markdown(
@@ -44,7 +57,7 @@ st.subheader("一、环境条件（温度）")
 hours = st.number_input(
     "5 月 15 日至 8 月 15 日期间 >28℃ 的累计小时数",
     min_value=0.0,
-    max_value=2160.0,  # 90 天 * 24 小时
+    max_value=2160.0,
     value=200.0,
     step=10.0,
 )
@@ -87,8 +100,13 @@ def predict_from_inputs(heat_hours, may_peak_spores, july_peak_spores, level_cod
     x_scaled = scaler.transform(x_raw)
     x_poly = poly.transform(x_scaled)
     z = ridge.predict(x_poly)
+
+    # ⚙️ 应用基线偏移
+    z = z - baseline_shift
+
     y_pred = Y_MAX * inv_logit(z)
     return float(np.clip(y_pred, 0.0, Y_MAX))
+
 
 # ---------- 5. 预测按钮 ----------
 if st.button("开始预测"):
@@ -102,9 +120,9 @@ if st.button("开始预测"):
     # 风险分级
     if pred > 30:
         color, label, text_color = "#FF4C4C", "发病风险：极高", "white"
-    elif pred > 25:
-        color, label, text_color = "#FFD93D", "发病风险：较高", "black"
     elif pred > 20:
+        color, label, text_color = "#FFD93D", "发病风险：较高", "black"
+    elif pred > 10:
         color, label, text_color = "#4DA6FF", "发病风险：中等", "white"
     else:
         color, label, text_color = "#4CD964", "发病风险：较低", "black"
@@ -148,6 +166,3 @@ if st.button("开始预测"):
     )
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
-
-
-
