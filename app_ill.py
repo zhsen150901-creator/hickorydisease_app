@@ -147,8 +147,8 @@ if st.button("开始预测"):
         unsafe_allow_html=True,
     )
 
-    # ======== 新增颜色说明 ========
- st.markdown("### 指标说明")
+    # ======== 指标说明 + 颜色说明 ========
+    st.markdown("### 指标说明")
     st.write(
         f"- 高温时长：**{hours:.1f} 小时**\n"
         f"- 5 月周孢子峰值：**{may_peak_spores:.0f} 孢子**\n"
