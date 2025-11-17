@@ -3,10 +3,6 @@ import streamlit as st
 from joblib import load
 from pathlib import Path
 
-
-
-model = load(MODEL_PATH)
-
 # ========== 基本设置 ==========
 st.set_page_config(
     page_title="山核桃黑籽病发病率预测系统",
@@ -16,6 +12,7 @@ st.set_page_config(
 # ========== 加载模型 ==========
 BASE_DIR = Path(__file__).parent  # app_ill.py 所在目录
 MODEL_PATH = BASE_DIR / "disease_model_poly.pkl"
+model = load(MODEL_PATH)
 coef = model["coef"]
 scaler = model["scaler"]
 feature_names = model["feature_names"]
@@ -166,5 +163,6 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
 
