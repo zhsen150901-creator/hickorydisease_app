@@ -45,9 +45,9 @@ with c1:
 with c2:
     july_peak_spores = st.number_input("7 月周孢子峰值（孢子数）", 0.0, 1_000_000.0, 200_000.0, 1000.0)
 
-st.subheader("三、经营条件")
-level = st.selectbox("经营水平", ["良好", "中等", "一般"])
-level_code = {"良好": 0, "中等": 1, "一般": 2}[level]
+st.subheader("三、林分质量")
+level = st.selectbox("林分质量", ["好", "一般", "退化"])
+level_code = {"好": 0, "一般": 1, "退化": 2}[level]
 
 # ---------- 预测函数 ----------
 def predict(heat_hours, may_spores, july_spores, level_code):
@@ -112,7 +112,7 @@ if st.button("开始预测"):
         f"- 高温时长：**{hours:.1f} 小时**\n"
         f"- 5 月周孢子峰值：**{may_peak_spores:.0f} 孢子**\n"
         f"- 7 月周孢子峰值：**{july_peak_spores:.0f} 孢子**\n"
-        f"- 经营水平：**{level}**"
+        f"- 林分质量：**{level}**"
     )
     st.markdown("""
     **颜色与发病严重程度对应：**  
@@ -123,4 +123,5 @@ if st.button("开始预测"):
     """)
 else:
     st.info("请填写参数并点击“开始预测”")
+
 
