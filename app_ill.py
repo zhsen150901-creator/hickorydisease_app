@@ -39,9 +39,16 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+# ---------- 三、林分质量 ----------
+st.subheader("一、林分质量")
+levels = ["优", "良", "中", "一般", "差"]
+encode_map = {"优": 0, "良": 1, "中": 2, "一般": 3, "差": 4}
+
+level = st.selectbox("林分质量", levels)
+level_code = encode_map[level]
 
 # ---------- 一、环境条件（温度） ----------
-st.subheader("一、环境条件（温度）")
+st.subheader("二、环境条件（温度）")
 hours = st.number_input(
     "5 月 15 日至 8 月 15 日期间 >28℃ 的累计小时数",
     min_value=0.0,
@@ -51,7 +58,7 @@ hours = st.number_input(
 )
 
 # ---------- 二、孢子流量 ----------
-st.subheader("二、孢子流量（周峰值，单位：孢子数）")
+st.subheader("三、孢子流量（周峰值，单位：孢子数）")
 c1, c2 = st.columns(2)
 with c1:
     may_peak_spores = st.number_input(
@@ -72,13 +79,7 @@ with c2:
         format="%.0f",
     )
 
-# ---------- 三、林分质量 ----------
-st.subheader("三、林分质量")
-levels = ["优", "良", "中", "一般", "差"]
-encode_map = {"优": 0, "良": 1, "中": 2, "一般": 3, "差": 4}
 
-level = st.selectbox("林分质量", levels)
-level_code = encode_map[level]
 
 
 # ---------- 预测函数 ----------
@@ -164,3 +165,4 @@ if st.button("开始预测"):
 
 else:
     st.info("请填写以上参数后，点击“开始预测”进行风险评估。")
+
