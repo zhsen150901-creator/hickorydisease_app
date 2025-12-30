@@ -4,7 +4,7 @@ from joblib import load
 
 # ========== 基本设置 ==========
 st.set_page_config(
-    page_title="山核桃黑籽病发病率预测系统",
+    page_title="山核桃黑籽病发病率预警系统",
     layout="centered",
 )
 
@@ -188,3 +188,4 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
