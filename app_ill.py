@@ -8,8 +8,6 @@ st.set_page_config(
     layout="centered",
 )
 
-# 用于确认 Streamlit Cloud 确实拉到了新代码
-st.write("DEPLOY CHECK: 2025-12-30 v7 (scalar pred fixed)")
 
 # ========== 加载模型 ==========
 model = load(r"disease_model_poly.pkl")
@@ -168,3 +166,4 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
