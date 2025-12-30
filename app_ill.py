@@ -4,7 +4,7 @@ from joblib import load
 
 # ========== 基本设置 ==========
 st.set_page_config(
-    page_title="山核桃黑籽病发病率预警系统",
+    page_title="山核桃黑籽病发病率预测系统",
     layout="centered",
 )
 
@@ -13,7 +13,10 @@ model = load(r"disease_model_poly.pkl")
 coef = model["coef"]
 scaler = model["scaler"]
 feature_names = model["feature_names"]
-SPORE_FACTOR = float(model.get("spore_factor", 395.0))  # 默认 395
+SPORE_FACTOR = float(model.get("spore_factor", 395.0))  # 默认 395（你目前代码里没用到，可留着）
+
+# （可选）调试：看看模型系数维度是否变化
+# st.write("Debug coef shape:", np.asarray(coef).shape, "feature_names len:", len(feature_names))
 
 # ========== 页面标题 ==========
 st.markdown(
@@ -57,11 +60,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("**2）7 月周孢子峰值**")
 d1, d2, d3 = st.columns(3)
 with d1:
-    sp1_july = st.number_input("小孢拟盘", min_value=0, max_value=500000, value=8000, step=100)
+    sp1_july = st.number_input("小孢拟盘（7月）", min_value=0, max_value=500000, value=8000, step=100)
 with d2:
-    sp2_july = st.number_input("葡萄座腔菌", min_value=0, max_value=500000, value=2000, step=100)
+    sp2_july = st.number_input("葡萄座腔菌（7月）", min_value=0, max_value=500000, value=2000, step=100)
 with d3:
-    sp3_july = st.number_input("假可可毛色二孢", min_value=0, max_value=500000, value=4000, step=100)
+    sp3_july = st.number_input("假可可毛色二孢（7月）", min_value=0, max_value=500000, value=4000, step=100)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -69,7 +72,6 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.subheader("三、经营条件")
 
 # ✅ 默认映射：越好数字越小（0-4）
-# 如与你训练时不一致，只改这一个字典即可
 encode_map = {"优": 0, "良": 1, "中": 2, "一般": 3, "差": 4}
 
 level = st.selectbox("经营水平", list(encode_map.keys()))
@@ -77,16 +79,19 @@ level_code = encode_map[level]
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ========== 预测函数（严格按 feature_names 组装） ==========
-def predict_from_inputs(heat_hours,
-                        sp1_may, sp2_may, sp3_may,
-                        sp1_july, sp2_july, sp3_july,
-                        level_code):
-    # 页面输入已是 *395 后的数值：直接求和就是当月“换算后总孢子数”
+
+# ========== 预测函数（严格按 feature_names 组装 + 稳定输出标量） ==========
+def predict_from_inputs(
+    heat_hours,
+    sp1_may, sp2_may, sp3_may,
+    sp1_july, sp2_july, sp3_july,
+    level_code
+):
+    # 页面输入：三种孢子直接求和
     may_spore_N = float(sp1_may + sp2_may + sp3_may)
     jul_spore_N = float(sp1_july + sp2_july + sp3_july)
 
-    # 仅用于展示
+    # 仅用于展示（你原逻辑）
     may_total = may_spore_N
     jul_total = jul_spore_N
 
@@ -97,13 +102,39 @@ def predict_from_inputs(heat_hours,
         "mgt_code": float(level_code),
     }
 
+    # 按模型保存的 feature_names 顺序组装
     x_raw = np.array([[feature_map[name] for name in feature_names]], dtype=float)
 
-    z = scaler.transform(x_raw)
-    z_design = np.c_[np.ones(len(z)), z]
-    pred = float(z_design @ coef)
+    # 标准化
+    z = scaler.transform(x_raw)  # shape: (1, p)
+    coef_arr = np.asarray(coef)
 
-    return max(0.0, min(pred, 100.0)), may_total, jul_total, may_spore_N, jul_spore_N
+    # -------- 关键修复：兼容 coef 带/不带截距，并强制预测为单值 --------
+    if coef_arr.ndim == 1 and coef_arr.shape[0] == z.shape[1] + 1:
+        # coef 包含截距项：design matrix 需要加 1
+        z_design = np.c_[np.ones((z.shape[0], 1)), z]  # (1, p+1)
+        res = z_design @ coef_arr                      # (1,)
+    elif coef_arr.ndim == 1 and coef_arr.shape[0] == z.shape[1]:
+        # coef 不含截距项：直接点积
+        res = z @ coef_arr                             # (1,)
+    else:
+        # coef 可能变成二维（多输出/保存格式变了）或维度不匹配
+        st.error(f"系数维度异常：coef.shape={coef_arr.shape}，z.shape={z.shape}")
+        st.stop()
+
+    res = np.asarray(res).squeeze()
+
+    if np.size(res) != 1:
+        st.error(f"模型输出不是单个数：res.shape={np.asarray(res).shape}，coef.shape={coef_arr.shape}")
+        st.stop()
+
+    pred = float(np.asarray(res).item())
+    # ------------------------------------------------------------------
+
+    # 限制范围 0~100
+    pred = max(0.0, min(pred, 100.0))
+
+    return pred, may_total, jul_total, may_spore_N, jul_spore_N
 
 
 # ========== 结果输出 ==========
@@ -138,7 +169,10 @@ if st.button("开始预测"):
             font-weight: 700;
             color:{text_color};
         ">
-            {label}
+            {label}<br>
+            <div style="font-size:18px; font-weight:600; margin-top:8px;">
+                预测发病率：{pred:.2f}%
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
