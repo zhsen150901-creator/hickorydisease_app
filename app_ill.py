@@ -8,15 +8,15 @@ st.set_page_config(
     layout="centered",
 )
 
+# 用来确认云端确实跑的是新代码（看不到这行=没更新成功）
+st.write("App version: 2025-12-30 v3 (scalar-safe pred)")
+
 # ========== 加载模型 ==========
 model = load(r"disease_model_poly.pkl")
 coef = model["coef"]
 scaler = model["scaler"]
 feature_names = model["feature_names"]
-SPORE_FACTOR = float(model.get("spore_factor", 395.0))  # 默认 395（你目前代码里没用到，可留着）
-
-# （可选）调试：看看模型系数维度是否变化
-# st.write("Debug coef shape:", np.asarray(coef).shape, "feature_names len:", len(feature_names))
+SPORE_FACTOR = float(model.get("spore_factor", 395.0))  # 默认 395（当前逻辑未使用）
 
 # ========== 页面标题 ==========
 st.markdown(
@@ -71,27 +71,24 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ========== 3. 经营条件（mgt_code 0-4） ==========
 st.subheader("三、经营条件")
 
-# ✅ 默认映射：越好数字越小（0-4）
 encode_map = {"优": 0, "良": 1, "中": 2, "一般": 3, "差": 4}
-
 level = st.selectbox("经营水平", list(encode_map.keys()))
 level_code = encode_map[level]
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-
-# ========== 预测函数（严格按 feature_names 组装 + 稳定输出标量） ==========
+# ========== 预测函数（强制输出标量，兼容 coef 带/不带截距） ==========
 def predict_from_inputs(
     heat_hours,
     sp1_may, sp2_may, sp3_may,
     sp1_july, sp2_july, sp3_july,
     level_code
 ):
-    # 页面输入：三种孢子直接求和
+    # 孢子求和
     may_spore_N = float(sp1_may + sp2_may + sp3_may)
     jul_spore_N = float(sp1_july + sp2_july + sp3_july)
 
-    # 仅用于展示（你原逻辑）
+    # 展示用
     may_total = may_spore_N
     jul_total = jul_spore_N
 
@@ -102,43 +99,47 @@ def predict_from_inputs(
         "mgt_code": float(level_code),
     }
 
-    # 按模型保存的 feature_names 顺序组装
-    x_raw = np.array([[feature_map[name] for name in feature_names]], dtype=float)
+    # 按 feature_names 顺序组装输入
+    try:
+        x_raw = np.array([[feature_map[name] for name in feature_names]], dtype=float)
+    except KeyError as e:
+        # 说明 feature_names 里出现了 feature_map 没有的键（模型文件变了）
+        raise KeyError(f"feature_names 里出现未知字段：{e}. 目前可用字段只有 {list(feature_map.keys())}")
 
     # 标准化
-    z = scaler.transform(x_raw)  # shape: (1, p)
+    z = scaler.transform(x_raw)  # (1, p)
+
     coef_arr = np.asarray(coef)
 
-    # -------- 关键修复：兼容 coef 带/不带截距，并强制预测为单值 --------
+    # === 关键：得到 res，但不直接 float(res) ===
     if coef_arr.ndim == 1 and coef_arr.shape[0] == z.shape[1] + 1:
-        # coef 包含截距项：design matrix 需要加 1
+        # coef 含截距
         z_design = np.c_[np.ones((z.shape[0], 1)), z]  # (1, p+1)
         res = z_design @ coef_arr                      # (1,)
     elif coef_arr.ndim == 1 and coef_arr.shape[0] == z.shape[1]:
-        # coef 不含截距项：直接点积
+        # coef 不含截距
         res = z @ coef_arr                             # (1,)
     else:
-        # coef 可能变成二维（多输出/保存格式变了）或维度不匹配
-        st.error(f"系数维度异常：coef.shape={coef_arr.shape}，z.shape={z.shape}")
-        st.stop()
+        # coef 变成二维/多输出/保存格式变化 —— 直接报清楚维度
+        raise ValueError(f"系数维度不匹配：coef.shape={coef_arr.shape}, z.shape={z.shape}")
 
+    # 压成标量
     res = np.asarray(res).squeeze()
+    if res.size != 1:
+        raise ValueError(f"模型输出不是单个数：res.shape={np.asarray(res).shape}, coef.shape={coef_arr.shape}")
 
-    if np.size(res) != 1:
-        st.error(f"模型输出不是单个数：res.shape={np.asarray(res).shape}，coef.shape={coef_arr.shape}")
-        st.stop()
+    pred = float(res.item())
 
-    pred = float(np.asarray(res).item())
-    # ------------------------------------------------------------------
-
-    # 限制范围 0~100
+    # 限制 0~100
     pred = max(0.0, min(pred, 100.0))
-
     return pred, may_total, jul_total, may_spore_N, jul_spore_N
-
 
 # ========== 结果输出 ==========
 if st.button("开始预测"):
+
+    # （可选）点了按钮才显示调试信息，防止页面太乱
+    st.write("DEBUG feature_names len:", len(feature_names))
+    st.write("DEBUG coef shape:", np.asarray(coef).shape, "type:", type(coef))
 
     pred, may_total, jul_total, may_spore_N, jul_spore_N = predict_from_inputs(
         heat_hours=hours,
@@ -188,4 +189,3 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
-
