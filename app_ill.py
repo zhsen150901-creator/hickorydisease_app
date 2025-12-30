@@ -18,7 +18,7 @@ SPORE_FACTOR = float(model.get("spore_factor", 395.0))  # 默认 395
 # ========== 页面标题 ==========
 st.markdown(
     """
-    <h2 style="text-align:center; margin-bottom:0.2rem;">山核桃黑籽病发病率预测系统</h2>
+    <h2 style="text-align:center; margin-bottom:0.2rem;">山核桃黑籽病发病率预警系统</h2>
     <p style="text-align:center; color: #555;">
         输入 5 月 15 日至 8 月 15 日高温时长、5/7 月三种孢子周峰值及经营水平，系统将评估黑籽病风险等级
     </p>
@@ -154,4 +154,5 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
