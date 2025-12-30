@@ -8,6 +8,9 @@ st.set_page_config(
     layout="centered",
 )
 
+# 用于确认 Streamlit Cloud 确实拉到了新代码
+st.write("DEPLOY CHECK: 2025-12-30 v7 (scalar pred fixed)")
+
 # ========== 加载模型 ==========
 model = load(r"disease_model_poly.pkl")
 coef = model["coef"]
@@ -68,25 +71,22 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ========== 3. 经营条件（mgt_code 0-4） ==========
 st.subheader("三、经营条件")
 
-# ✅ 默认映射：越好数字越小（0-4）
-# 如与你训练时不一致，只改这一个字典即可
 encode_map = {"优": 0, "良": 1, "中": 2, "一般": 3, "差": 4}
-
 level = st.selectbox("经营水平", list(encode_map.keys()))
 level_code = encode_map[level]
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ========== 预测函数（严格按 feature_names 组装） ==========
-def predict_from_inputs(heat_hours,
-                        sp1_may, sp2_may, sp3_may,
-                        sp1_july, sp2_july, sp3_july,
-                        level_code):
-    # 页面输入已是 *395 后的数值：直接求和就是当月“换算后总孢子数”
+def predict_from_inputs(
+    heat_hours,
+    sp1_may, sp2_may, sp3_may,
+    sp1_july, sp2_july, sp3_july,
+    level_code
+):
     may_spore_N = float(sp1_may + sp2_may + sp3_may)
     jul_spore_N = float(sp1_july + sp2_july + sp3_july)
 
-    # 仅用于展示
     may_total = may_spore_N
     jul_total = jul_spore_N
 
@@ -99,9 +99,24 @@ def predict_from_inputs(heat_hours,
 
     x_raw = np.array([[feature_map[name] for name in feature_names]], dtype=float)
 
-    z = scaler.transform(x_raw)
-    z_design = np.c_[np.ones(len(z)), z]
-    pred = float(z_design @ coef)
+    z = scaler.transform(x_raw)  # (1, p)
+
+    # ====== ✅ 修复点：永远输出单个标量，不再 float(向量) ======
+    coef_arr = np.asarray(coef)
+
+    # coef 一维：分“含截距/不含截距”
+    if coef_arr.ndim == 1 and coef_arr.shape[0] == z.shape[1] + 1:
+        z_design = np.c_[np.ones((z.shape[0], 1)), z]   # (1, p+1)
+        res = z_design @ coef_arr                       # (1,)
+    elif coef_arr.ndim == 1 and coef_arr.shape[0] == z.shape[1]:
+        res = z @ coef_arr                              # (1,)
+    else:
+        # 兜底：不管 res 是啥形状，先算出来再取第一个值（保证不报 TypeError）
+        z_design = np.c_[np.ones((z.shape[0], 1)), z]
+        res = z_design @ coef_arr
+
+    pred = float(np.ravel(np.asarray(res))[0])
+    # ============================================================
 
     return max(0.0, min(pred, 100.0)), may_total, jul_total, may_spore_N, jul_spore_N
 
@@ -116,7 +131,6 @@ if st.button("开始预测"):
         level_code=level_code,
     )
 
-    # 风险等级（你原来的阈值）
     if pred > 30:
         color = "#FF4C4C"; label = "发病风险：极高"; text_color = "white"
     elif pred > 20:
@@ -154,4 +168,3 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
-
