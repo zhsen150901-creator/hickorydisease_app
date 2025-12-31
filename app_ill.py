@@ -4,7 +4,7 @@ from joblib import load
 
 # ========== 基本设置 ==========
 st.set_page_config(
-    page_title="山核桃黑籽病发病率预警系统",
+    page_title="山核桃黑籽病预警系统",
     layout="centered",
 )
 
@@ -19,7 +19,7 @@ SPORE_FACTOR = float(model.get("spore_factor", 395.0))  # 默认 395
 # ========== 页面标题 ==========
 st.markdown(
     """
-    <h2 style="text-align:center; margin-bottom:0.2rem;">山核桃黑籽病发病率预警系统</h2>
+    <h2 style="text-align:center; margin-bottom:0.2rem;">山核桃黑籽病预警系统</h2>
     <p style="text-align:center; color: #555;">
         输入 5 月 15 日至 8 月 15 日高温时长、5/7 月三种孢子周峰值及经营水平，系统将评估黑籽病风险等级
     </p>
@@ -156,7 +156,32 @@ if st.button("开始预测"):
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 指标说明")
+    
+        st.markdown("### 颜色说明（风险分级）")
+    st.markdown(
+        """
+        <div style="line-height: 1.8;">
+          <div style="display:flex; align-items:center; margin:6px 0;">
+            <div style="width:18px; height:18px; border-radius:5px; background:#FF4C4C; margin-right:10px;"></div>
+            <div><b>极高</b>（pred &gt; 30）</div>
+          </div>
+          <div style="display:flex; align-items:center; margin:6px 0;">
+            <div style="width:18px; height:18px; border-radius:5px; background:#FFD93D; margin-right:10px;"></div>
+            <div><b>较高</b>（20 &lt; pred ≤ 30）</div>
+          </div>
+          <div style="display:flex; align-items:center; margin:6px 0;">
+            <div style="width:18px; height:18px; border-radius:5px; background:#4DA6FF; margin-right:10px;"></div>
+            <div><b>中等</b>（10 &lt; pred ≤ 20）</div>
+          </div>
+          <div style="display:flex; align-items:center; margin:6px 0;">
+            <div style="width:18px; height:18px; border-radius:5px; background:#4CD964; margin-right:10px;"></div>
+            <div><b>较低</b>（pred ≤ 10）</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.write(
         f"- 高温时长：**{hours:.1f} 小时**\n"
         f"- 5 月三种孢子周峰值合计：**{may_total:.0f}**\n"
@@ -166,4 +191,5 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
