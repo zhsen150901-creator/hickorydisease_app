@@ -157,30 +157,31 @@ if st.button("开始预测"):
     )
 
     
-    st.markdown("### 颜色说明（风险分级）")
+    st.markdown("##### 颜色与发病严重程度对应：")
     st.markdown(
         """
-        <div style="line-height: 1.8;">
-          <div style="display:flex; align-items:center; margin:6px 0;">
-            <div style="width:18px; height:18px; border-radius:5px; background:#FF4C4C; margin-right:10px;"></div>
-            <div><b>极高</b>（pred &gt; 30）</div>
+        <div style="margin-top: 0.2rem; line-height: 2.0; font-size: 18px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="width:18px; height:18px; border-radius:50%; background:#FF4C4C; display:inline-block;"></span>
+            <span><b>红色：</b>发病风险极高（pred &gt; 30）</span>
           </div>
-          <div style="display:flex; align-items:center; margin:6px 0;">
-            <div style="width:18px; height:18px; border-radius:5px; background:#FFD93D; margin-right:10px;"></div>
-            <div><b>较高</b>（20 &lt; pred ≤ 30）</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="width:18px; height:18px; border-radius:50%; background:#FFD93D; display:inline-block;"></span>
+            <span><b>黄色：</b>较高（20 &lt; pred ≤ 30）</span>
           </div>
-          <div style="display:flex; align-items:center; margin:6px 0;">
-            <div style="width:18px; height:18px; border-radius:5px; background:#4DA6FF; margin-right:10px;"></div>
-            <div><b>中等</b>（10 &lt; pred ≤ 20）</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="width:18px; height:18px; border-radius:50%; background:#4DA6FF; display:inline-block;"></span>
+            <span><b>蓝色：</b>中等（10 &lt; pred ≤ 20）</span>
           </div>
-          <div style="display:flex; align-items:center; margin:6px 0;">
-            <div style="width:18px; height:18px; border-radius:5px; background:#4CD964; margin-right:10px;"></div>
-            <div><b>较低</b>（pred ≤ 10）</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="width:18px; height:18px; border-radius:50%; background:#4CD964; display:inline-block;"></span>
+            <span><b>绿色：</b>较低（pred ≤ 10）</span>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
     st.write(
         f"- 高温时长：**{hours:.1f} 小时**\n"
@@ -191,6 +192,7 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
 
 
