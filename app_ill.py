@@ -155,9 +155,14 @@ if st.button("开始预测"):
         """,
         unsafe_allow_html=True,
     )
-
-    
-    st.markdown("##### 颜色与发病严重程度对应：")
+    st.markdown("##### 指标说明：")
+    st.write(
+        f"- 高温时长：**{hours:.1f} 小时**\n"
+        f"- 5 月三种孢子周峰值合计：**{may_total:.0f}**\n"
+        f"- 7 月三种孢子周峰值合计：**{jul_total:.0f}**\n"
+        f"- 经营水平：**{level}**\n"
+    )
+    st.markdown("#### 颜色与发病严重程度对应：")
     st.markdown(
         """
         <div style="margin-top: 0.2rem; line-height: 2.0; font-size: 18px;">
@@ -182,16 +187,9 @@ if st.button("开始预测"):
         unsafe_allow_html=True,
     )
 
-
-    st.write(
-        f"- 高温时长：**{hours:.1f} 小时**\n"
-        f"- 5 月三种孢子周峰值合计：**{may_total:.0f}**\n"
-        f"- 7 月三种孢子周峰值合计：**{jul_total:.0f}**\n"
-        f"- 经营水平：**{level}**\n"
-    )
-
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
 
 
