@@ -157,7 +157,7 @@ if st.button("开始预测"):
     )
 
     
-        st.markdown("### 颜色说明（风险分级）")
+    st.markdown("### 颜色说明（风险分级）")
     st.markdown(
         """
         <div style="line-height: 1.8;">
@@ -191,5 +191,6 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
 
