@@ -163,19 +163,19 @@ if st.button("开始预测"):
         <div style="margin-top: 0.2rem; line-height: 2.0; font-size: 18px;">
           <div style="display:flex; align-items:center; gap:10px;">
             <span style="width:18px; height:18px; border-radius:50%; background:#FF4C4C; display:inline-block;"></span>
-            <span><b>红色：</b>发病风险极高（pred &gt; 30）</span>
+            <span><b>红色：</b>发病风险极高</span>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
             <span style="width:18px; height:18px; border-radius:50%; background:#FFD93D; display:inline-block;"></span>
-            <span><b>黄色：</b>较高（20 &lt; pred ≤ 30）</span>
+            <span><b>黄色：</b>较高</span>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
             <span style="width:18px; height:18px; border-radius:50%; background:#4DA6FF; display:inline-block;"></span>
-            <span><b>蓝色：</b>中等（10 &lt; pred ≤ 20）</span>
+            <span><b>蓝色：</b>中等</span>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
             <span style="width:18px; height:18px; border-radius:50%; background:#4CD964; display:inline-block;"></span>
-            <span><b>绿色：</b>较低（pred ≤ 10）</span>
+            <span><b>绿色：</b>较低</span>
           </div>
         </div>
         """,
@@ -192,6 +192,7 @@ if st.button("开始预测"):
 
 else:
     st.warning("请填写以上参数后，点击“开始预测”进行风险评估。")
+
 
 
 
